@@ -1,0 +1,14 @@
+---
+title: "dados_python"
+format: html
+editor: visual
+---
+
+## Data
+```{r}
+
+load("/Volumes/GoogleDrive-103548588935465845166/Meu Drive/NLP_psicom/bfi/base_padrao.RData")
+save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, file = "../data/data_bfi_nlp.RData")
+
+```
+

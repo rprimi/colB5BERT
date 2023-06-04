@@ -1,0 +1,261 @@
+---
+title: "Tokenizer + SVD"
+format: html
+editor: source
+---
+
+### Libraries
+
+```{r}
+
+library(xlsx)
+library(stringr)
+library(tm)
+library(tidytext)
+library(tidyr)
+library(dplyr)
+library(glue)
+library(tidyverse)
+library(scales)
+
+
+library(SnowballC)
+library(widyr)
+library(furrr)
+
+
+```
+
+### Data
+
+```{r}
+ load("base_padrao.rda")
+ load("base_padrao.RData")
+ save.image("base_padrao.RData")
+
+```
+
+### Tokenization using tidytext. Vanila word embeddings
+
+https://smltar.com/embeddings.html#motivatingsparse
+
+
+```{r}
+
+stopwords <- read.csv(
+  file = "http://www.labape.com.br/rprimi/ds/stopwords.txt"
+)
+
+names(stopwords) <- "word"
+
+db_textos_nested <- db_textos  %>%
+  unnest_tokens(word, texto) %>%
+  anti_join(stopwords, by = "word") %>%
+  mutate(word = wordStem(word)) %>%
+  add_count(word) %>%
+  filter(n>10) %>%
+  select(-n) %>%
+  nest(words = c(word))
+
+view(db_textos_nested[[2]][[1]])
+
+
+setwd("/Users/rprimi/Dropbox (Personal)/B5_NLP")
+db_textos_nested %>% mutate(word_count = map_int(words, nrow)) %>%
+  ggplot(aes(x=word_count)) + geom_histogram(color = "white")
+
+
+dim(db_textos_nested[[2]][[1]])
+db
+
+
+slide_windows <- function(tbl, window_size) {
+  
+  skipgrams <- slider::slide(
+    tbl, 
+    ~.x, 
+    .after = window_size - 1, 
+    .step = 1, 
+    .complete = TRUE
+  )
+  
+  safe_mutate <- safely(mutate)
+  
+  out <- map2(skipgrams, 1:length(skipgrams),
+              ~ safe_mutate(.x, window_id = .y))
+  
+  out %>%
+    transpose() %>%
+    pluck("result") %>%
+    compact() %>%
+    bind_rows()
+}
+
+plan(multisession)  ## for parallel processing
+
+temp <- db_textos_nested[1:4, ] %>%
+  mutate(words = future_map(words, slide_windows, 10L)) %>%
+  unnest(words)
+
+max(temp$window_id)
+
+tidy_pmi <- db_textos_nested[1:4, ] %>%
+  mutate(words = future_map(words, slide_windows, 10L)) %>%
+  unnest(words) %>%
+  unite(window_id, id, window_id) %>%
+  widyr::pairwise_pmi(word, window_id)
+
+tidy_word_vectors <- tidy_pmi %>%
+  widely_svd(
+    item1, item2, pmi,
+    nv = 100, maxit = 1000
+  )
+
+?irlba
+
+tidy_word_vectors[1:100, ]
+
+
+tidy_pmi[1:100, ] %>% view
+```
+
+```{r}
+nearest_neighbors <- function(df, token) {
+  df %>%
+    widely(
+      ~ {
+        y <- .[rep(token, nrow(.)), ]
+        res <- rowSums(. * y) / 
+          (sqrt(rowSums(. ^ 2)) * sqrt(sum(.[token, ] ^ 2)))
+        
+        matrix(res, ncol = 1, dimnames = list(x = names(res)))
+      },
+      sort = TRUE
+    )(item1, dimension, value) %>%
+    select(-item2)
+}
+
+tidy_word_vectors %>%
+  nearest_neighbors("amor")
+
+tidy_word_vectors2 <- tidy_word_vectors %>% pivot_wider(names_from = dimension, values_from = value)
+
+
+```
+
+```{r}
+#' Vamos criar um novo df_textos. Uma das limitações do BERT é que ele só é
+#' capaz de assimilar textos com no máximo 512 tokens. Como a maioria dos textos
+#' é composta por mais tokens que isto, vamos separar os textos em grupos de 500
+#' palavras
+
+
+split_texts <- function(db_textos, numero_palavras_por_divisao = 50 ){
+  
+  db_textos_dividido <- data.frame(
+    matrix(
+      nrow = 0,
+      ncol = 4
+    )
+  )
+  names(db_textos_dividido) <- c(
+    'id',
+    'id_divisao',
+    'texto',
+    'texto_dividido'
+  )
+  
+  for(i in 1:nrow(db_textos)){
+    print(paste('Texto', i, 'de', nrow(db_textos)))
+    
+    
+    palavras <- strsplit(db_textos$texto[i], "\\s+")[[1]]
+    num_grupos <- ceiling(length(palavras) / numero_palavras_por_divisao)
+    
+    grupos_palavras <- split(
+      palavras,
+      rep(
+        1:num_grupos,
+        each = numero_palavras_por_divisao,
+        length.out = length(palavras)
+      )
+    )
+    
+    db_intermediario <- data.frame(
+      matrix(
+        nrow = length(grupos_palavras),
+        ncol = 4
+      )
+    )
+    names(db_intermediario) <- c(
+      'id',
+      'id_divisao',
+      'texto',
+      'texto_dividido'
+    )
+    
+    db_intermediario$id <- db_textos$id[i]
+    db_intermediario$texto <- db_textos$texto[i]
+    db_intermediario$id_divisao <- 1:length(grupos_palavras)
+    
+    for(j in 1:length(grupos_palavras)){
+      db_intermediario$texto_dividido[j] <- paste(grupos_palavras[[j]], collapse = " ")
+    }
+    
+    db_textos_dividido <- rbind(
+      db_textos_dividido,
+      db_intermediario
+    )
+  }
+  return(db_textos_dividido)
+}
+
+db_textos_splited <- split_texts(db_textos = db_textos)
+
+
+
+```
+
+```{r}
+
+data_embeddings <- db_textos_splited %>%
+  unnest_tokens(word, texto_dividido) %>%
+  anti_join(stopwords, by = "word") %>%
+  mutate(word = wordStem(word)) %>%
+  left_join(tidy_word_vectors2, by =c("word"="item1")) %>%
+  select(-word) %>%
+  group_by(id, id_divisao, texto) %>%
+  dplyr::summarise(across(everything(), mean, na.rm=TRUE))
+
+hist(tidy_word_vectors$value)
+
+data_embeddings[1:1000, ] %>% view
+
+
+```
+
+### Miscelânea
+
+```{r}
+
+
+dfm <- db_textos %>%
+  unnest_tokens(word, texto) %>%
+  anti_join(stopwords, by = "word") %>%
+  mutate(stem = wordStem(word)) %>%
+  count(id, stem) %>%
+  cast_dfm(id, stem, n)
+
+dfm <- db_textos %>%
+  unnest_tokens(word, texto) %>%
+  anti_join(stopwords, by = "word") %>%
+  mutate(stem = wordStem(word)) %>%
+  count(id, stem) %>%
+  bind_tf_idf(stem, id, n) %>%
+  cast_dfm(id, stem, tf_idf)
+ 
+dimnames(dfm)[2]
+
+rm(dfm)
+
+```
