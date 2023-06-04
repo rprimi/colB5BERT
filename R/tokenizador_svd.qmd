@@ -29,7 +29,8 @@ library(furrr)
 ### Data
 
 ```{r}
- load("base_padrao.rda")
+# load("base_padrao.rda")
+ 
  load("base_padrao.RData")
  save.image("base_padrao.RData")
 
@@ -59,14 +60,18 @@ db_textos_nested <- db_textos  %>%
 
 view(db_textos_nested[[2]][[1]])
 
-
-setwd("/Users/rprimi/Dropbox (Personal)/B5_NLP")
+dev.new()
 db_textos_nested %>% mutate(word_count = map_int(words, nrow)) %>%
-  ggplot(aes(x=word_count)) + geom_histogram(color = "white")
+  ggplot(aes(x=db_textos_nested)) + geom_histogram(color = "white")
 
+db_textos_nested %>% 
+  mutate(word_count = map_int(words, nrow)) %>% 
+  pluck("word_count") %>% hist
 
-dim(db_textos_nested[[2]][[1]])
-db
+db_textos_nested %>% 
+  mutate(word_count = map_int(words, nrow)) %>% 
+  select(word_count) %>% skimr::skim()
+
 
 
 slide_windows <- function(tbl, window_size) {
@@ -93,13 +98,8 @@ slide_windows <- function(tbl, window_size) {
 
 plan(multisession)  ## for parallel processing
 
-temp <- db_textos_nested[1:4, ] %>%
-  mutate(words = future_map(words, slide_windows, 10L)) %>%
-  unnest(words)
 
-max(temp$window_id)
-
-tidy_pmi <- db_textos_nested[1:4, ] %>%
+tidy_pmi <- db_textos_nested %>%
   mutate(words = future_map(words, slide_windows, 10L)) %>%
   unnest(words) %>%
   unite(window_id, id, window_id) %>%
@@ -114,8 +114,6 @@ tidy_word_vectors <- tidy_pmi %>%
 ?irlba
 
 tidy_word_vectors[1:100, ]
-
-
 tidy_pmi[1:100, ] %>% view
 ```
 
@@ -138,9 +136,11 @@ nearest_neighbors <- function(df, token) {
 tidy_word_vectors %>%
   nearest_neighbors("amor")
 
-tidy_word_vectors2 <- tidy_word_vectors %>% pivot_wider(names_from = dimension, values_from = value)
+tidy_word_vectors <- tidy_word_vectors %>% pivot_wider(names_from = dimension, values_from = value)
 
+rm(tidy_word_vectors2)
 
+rm(temp)
 ```
 
 ```{r}
@@ -210,7 +210,7 @@ split_texts <- function(db_textos, numero_palavras_por_divisao = 50 ){
   return(db_textos_dividido)
 }
 
-db_textos_splited <- split_texts(db_textos = db_textos)
+
 
 
 
@@ -218,11 +218,15 @@ db_textos_splited <- split_texts(db_textos = db_textos)
 
 ```{r}
 
-data_embeddings <- db_textos_splited %>%
+rm(data_embeddings)
+db_splited_embeddings <- split_texts(db_textos = db_textos)
+
+
+db_splited_embeddings <-db_splited_embeddings %>%
   unnest_tokens(word, texto_dividido) %>%
   anti_join(stopwords, by = "word") %>%
   mutate(word = wordStem(word)) %>%
-  left_join(tidy_word_vectors2, by =c("word"="item1")) %>%
+  left_join(tidy_word_vectors, by =c("word"="item1")) %>%
   select(-word) %>%
   group_by(id, id_divisao, texto) %>%
   dplyr::summarise(across(everything(), mean, na.rm=TRUE))
