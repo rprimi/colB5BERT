@@ -1,0 +1,222 @@
+---
+title: "Psychometric Analysis of BFI-2"
+author: "Ricardo Primi"
+date: "4/20/2019"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+  
+  knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+#### Libraries
+
+```{r}
+
+  library(tidyverse)
+  library(psych)
+  library(sjPlot)
+  library(sjmisc)
+  library(ggrepel)
+  library(RColorBrewer) 
+  library(intsvy)
+  library(readxl)
+  library(xlsx)
+  
+  library(corrplot)
+  library(d3heatmap)
+
+  library(knitr)
+ 
+```
+
+```{r eval=FALSE}
+  
+  source("http://www.labape.com.br/rprimi/R/recoding_functions.R")
+  source("http://www.labape.com.br/rprimi/R/acquiescence_recoding2.R")
+  source("http://www.labape.com.br/rprimi/R/save_loadings4.R") 
+  source("http://www.labape.com.br/rprimi/R/score_tests.R")
+
+```
+ 
+
+```{r}
+
+  load("bd/bfi2.RData")
+
+```
+ 
+ 
+
+
+#### Cleaning database
+
+```{r eval=FALSE}
+   
+  bd_bfi2 %>% select(item_dic$coditem) %>% map(frq)
+ 
+  bd_bfi2[ , item_dic$coditem] <- scrub(bd_bfi2[ , item_dic$coditem],  min=1, max=5)
+  
+  
+ bd_bfi2$Idade <- ifelse(bd_bfi2$Idade > 72 | bd_bfi2$Idade < 14, NA, bd_bfi2$Idade)
+ frq(bd_bfi2$Idade)
+
+```
+
+#### Samples 
+
+```{r}
+
+ frq(bd_bfi2$base_nome)
+ describe(bd_bfi2$Idade)
+ frq(bd_bfi2$Sexo)
+ 
+ 
+```
+#### Exemplo
+```{r}
+item_dic <- item_dic %>% arrange(domain0, facet0, set, pole)
+
+
+  dic <-  
+    tibble(
+      coditem = item_dic$coditem,
+      scale = item_dic$domain, 
+      pole = item_dic$pole,
+      seman_pairs = item_dic$seman_pairs1,
+      item_text = item_dic$item_text,
+      en_text = item_dic$en_text
+    ) 
+   
+  domain_facet <-  
+    tibble(
+      coditem = item_dic$coditem,
+      scale = item_dic$domain, 
+      pole = item_dic$pole,
+      seman_pairs = item_dic$seman_pairs1,
+      item_text = item_dic$item_text,
+      en_text = item_dic$en_text
+    ) %>%
+    rbind(
+    tibble(
+      coditem = item_dic$coditem,
+      scale = item_dic$facet, 
+      pole = item_dic$pole,
+      seman_pairs = item_dic$seman_pairs1,
+      item_text = item_dic$item_text,
+      en_text = item_dic$en_text
+      )
+    )
+  
+   bd_bdi_domain <- bd_bfi2 %>% 
+    select(dic$coditem) %>% 
+    recode_for_acq( 
+    item_dic = dic
+  )
+   
+    bfi_psicom_domain <- find_psychometrics(bd_bdi_domain, likert = 5, 
+                                     center = 3)
+ 
+    save_item_psicom(bfi_psicom_domain, filename = "bd/bfi_psicom_domain.xlsx")
+   
+  
+```
+
+
+
+```{r}
+ 
+  print.psych(bfi_psicom$psicom_orig, short = FALSE)
+  print.psych(bfi_psicom$psicom_recoded, short = FALSE)
+  
+  names(scores$scores)
+  
+  base_scores %>% ggplot(aes(x = acq_index)) + 
+     geom_histogram(aes(y=..density..), color="white", fill = "gray", binwidth = .25) +
+     scale_x_continuous(breaks = seq(1, 4, 1), limits = c(1, 5)) +
+     facet_grid(base_nome~.)
+  
+   scores$scores %>% ggplot(aes(x = acq_index, y = ws_sd )) +  
+     geom_point(alpha=1/8)
+   
+   
+     geom_histogram(color="white", fill = "gray", binwidth = .25) +
+     scale_x_continuous(breaks = seq(1, 4, 1), limits = c(1, 4))
+ 
+ scores %>% ggplot(aes(x = 6- OVERCLAIM_o)) + 
+     geom_histogram(color="white", fill = "gray", binwidth = .5) +
+     scale_x_continuous(breaks = seq(1, 5, 1), limits = c(1, 5))
+  
+```
+
+##### Efa e congruêncy
+
+```{r}
+  
+  bd_bfi2 %>% select(item_dic$coditem) %>% fa.parallel(fa = "pc")
+  
+  bfi_recoded$data_acq_recoded %>% dplyr::select(item_dic$coditem) %>% fa.parallel(fa = "pc")
+  
+  factor.congruence(efa_o, as.matrix(item_dic[, 17:21]))
+ 
+ factor.congruence(efa_acq, as.matrix(item_dic[, 17:21]))
+
+
+```
+
+```{r}
+
+  
+ bfi_psicom$scores %>% ggplot(aes(x = acq_index)) + 
+     geom_histogram(color="white", fill = "gray", binwidth = .25) +
+     scale_x_continuous(breaks = seq(1, 5, 1), limits = c(1, 5))
+  
+   bfi_psicom$scores %>% select(acq_index) %>% describe
+   
+   
+   bind_cols(bd_bfi2, bfi_psicom$scores ) %>% ggplot(aes(x = acq_index, y = ..density..)) + 
+     geom_histogram(color="white", fill = "gray", binwidth = .10) +
+     scale_x_continuous(breaks = seq(1, 5, .5), limits = c(1, 5)) +
+    facet_grid(base_nome~.)
+  frq(bd_bfi2$base_nome)
+  
+    bfi_psicom$scores %>% select(acq_index) %>% describe
+   
+   
+```
+
+
+
+
+```{r eval=FALSE}
+
+  efa_o <- bd_bfi2 %>% select(item_dic$coditem) %>%  
+    fa(nfactors = 5, rotate = "varimax")
+
+  efa_acq <- bfi_recoded$data_acq_recoded %>% select(item_dic$coditem) %>%  
+    fa(nfactors = 5, rotate = "varimax")
+
+ names(item_dic)
+ 
+
+
+save_loadings4(efa_o, item_dic = item_dic,filename = "bd/efa_o.xlsx", sheetName = "efa_o")
+save_loadings4(efa_acq, item_dic = item_dic,filename = "bd/efa_o.xlsx", sheetName = "efa_acq")
+
+
+ 
+```
+#### Saves data 
+```{r}
+
+ 
+ base_scores <- bd_bfi2 %>% bind_cols(bfi_psicom$scores)
+ 
+ base_scores %>% saveRDS(file="base_ruam_bruno.RDS")
+
+```
+
+
