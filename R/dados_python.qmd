@@ -18,7 +18,7 @@ save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, 
 ```
 
 ```{r}
-db_textos_splited <- split_texts(db_textos = db_textos, numero_palavras_por_divisao = 200)
+db_textos_splited <- split_texts(db_textos = db_textos, numero_palavras_por_divisao = 250)
 
 db_textos_splited %>% group_by(id) %>%
  summarise(num_splits = max(id_divisao)) %>%
