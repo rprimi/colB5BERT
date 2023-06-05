@@ -18,14 +18,16 @@ save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, 
 ```
 
 ```{r}
-db_textos_splited <- split_texts(db_textos = db_textos, numero_palavras_por_divisao = 500)
+db_textos_splited <- split_texts(db_textos = db_textos, numero_palavras_por_divisao = 300)
 
 db_textos_splited %>% group_by(id) %>%
-summarise(num_splits = max(id_divisao)) %>%
-ggplot(aes(x=num_splits)) + geom_histogram(color="white")
-write_csv2(db_textos_splited, file = "../data/db_textos.splitted.csv")
+ summarise(num_splits = max(id_divisao)) %>%
+ ggplot(aes(x = num_splits)) + geom_histogram(color = "white")
+
+# write_csv2(db_textos_splited, file = "../data/db_textos.splitted.csv")
 
 db_textos_splited %>% select(-texto) %>%
-write_csv2(file = "../data/db_textos.splitted.csv")
+ write_csv2(file = "../data/db_textos.splitted.csv")
+
 ```
 
