@@ -8,13 +8,17 @@ output: html_document
 library(tidyverse)
 library(tidytext)
 
-library(psych)
+library(reticulate)
 library(keras)
 library(tensorflow)
+
+
+library(psych)
+
 library(tm)
 library(SnowballC)
 library(quanteda)
-library(reticulate)
+
 # devtools::install_github("kbenoit/quanteda")
 
 
@@ -29,8 +33,21 @@ keras::install_keras()
 conda_list()
 py_available()
 
+reticulate::py_list_packages()
+py_config()
+
+reticulate::use_python("/Users/ricardoprimi/opt/miniconda3/bin/python")
+reticulate::use_condaenv("/Users/ricardoprimi/opt/miniconda3/")
 ```
 
+```{python}
+import tensorflow as tf
+print(tf.__version__)
+
+import keras
+print(keras.__version__)
+
+```
 
 
 #### Prepare data
@@ -47,6 +64,12 @@ glimpse(db_splited_embeddings)
 names(db_splited_embeddings)
 
 db_splited_embeddings[, 4:108] %>% skimr::skim()
+
+names(db_splited_embeddings)
+
+db_splited_embeddings <- db_splited_embeddings %>%
+  ungroup() %>%
+  dplyr::filter(if_all(c(4:121), ~ !is.na(.)))
 
 
 #PQP
@@ -207,7 +230,7 @@ model <- keras_model_sequential() %>%
   layer_dense(
     units = 100,
     activation = "relu",
-    input_shape = c(159),
+    input_shape = c(100),
     kernel_regularizer = regularizer_l2(0.001)
   ) %>%
   layer_dropout(rate = 0.5) %>%
@@ -218,12 +241,12 @@ model <- keras_model_sequential() %>%
     kernel_regularizer = regularizer_l2(0.001)
   ) %>%
   layer_dropout(rate = 0.5) %>%
-  layer_dense(units = 5)
+  layer_dense(units = 5,  input_shape = c(100))
 
 summary(model)
 
-model <- keras_model_sequential() %>%
-  layer_dense(
+model <- keras::keras_model_sequential() %>%
+  keras::layer_dense(
     units = 5,
     input_shape = c(159),
     kernel_regularizer = regularizer_l2(0.001)
