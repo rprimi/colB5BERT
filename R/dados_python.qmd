@@ -1,13 +1,15 @@
 ---
 title: "dados_python"
 format: html
-editor: visual
+editor: source
 ---
 
-## Libraties
+## Libraries
 
 ```{r}
 library(tidyverse)
+library(torch)
+# torch::install_torch()
 ```
 
 ## Data
@@ -15,20 +17,40 @@ library(tidyverse)
 ```{r}
 
 load("/Volumes/GoogleDrive-103548588935465845166/Meu Drive/NLP_psicom/bfi/base_padrao.RData")
+
 save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, file = "../data/data_bfi_nlp.RData")
+
+library(readxl)
+base_itens <- read_excel("../data/base_itens.xlsx")
+
+
+```
+
+## Final data 
+```{r}
+
+load("~/Dropbox (Personal)/B5_NLP/colB5BERT/data/data_bfi_nlp.RData")
+
+library(readr)
+db_textos_splitted <- read_delim("../data/db_textos.splitted.csv", 
+    delim = ";", escape_double = FALSE, trim_ws = TRUE)
 
 ```
 
 ```{r}
 db_textos_splited <- split_texts(db_textos = db_textos, numero_palavras_por_divisao = 250)
 
+
+View(db_textos_splitted)
+
 db_splited_embeddings %>% group_by(id) %>%
  summarise(num_splits = max(id_divisao)) %>%
  ggplot(aes(x = num_splits)) + geom_histogram(color = "white")
 
-db_textos_splited %>% group_by(id) %>%
+db_textos_splitted  %>% group_by(id) %>%
  summarise(num_splits = max(id_divisao)) %>%
- ggplot(aes(x = num_splits)) + geom_histogram(color = "white")
+ ggplot(aes(x = num_splits)) + geom_histogram(color = "white") +
+ scale_x_continuous(breaks = scales::breaks_pretty(20))
 
 # write_csv2(db_textos_splited, file = "../data/db_textos.splitted.csv")
 
@@ -36,3 +58,47 @@ db_textos_splited %>% select(-texto) %>%
  write_csv2(file = "../data/db_textos.splitted.csv")
 
 ```
+
+## Reading embeddings saved in numpy arrays
+
+
+```{r}
+library(reticulate)
+
+# Import numpy
+np <- import("numpy")
+
+# Use numpy's load function to open the .npz file
+
+emb_posts <- np$load("/Volumes/GoogleDrive/Meu Drive/colB5BERT/embeddings_posts.npz", allow_pickle=TRUE)
+
+# The data object is a Python dictionary. You can convert it to a list in R.
+emb_itens <- py_to_r(emb_itens)
+emb_posts <- py_to_r(emb_posts)
+
+# Get a named array from the .npz file
+emb_itens_L6 = emb_itens[['6']]
+emb_posts_L6 = emb_posts[['6']][[1:4]]
+
+glimpse(emb_itens_L6)
+
+str(data)
+
+# top5 cosine similarities
+library(reticulate)
+
+# Import necessary modules
+pickle <- import("pickle")
+builtins <- import_builtins()
+
+# Open the pickle file and load it
+file <- builtins$open("/Volumes/GoogleDrive-103548588935465845166/Meu Drive/colB5BERT/cosim_L6.pkl", "rb")
+cosim_L6 <- pickle$load(file)
+
+# Close the file after reading
+file$close()
+
+
+```
+
+
