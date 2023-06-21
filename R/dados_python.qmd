@@ -10,6 +10,10 @@ editor: source
 library(tidyverse)
 library(torch)
 # torch::install_torch()
+
+torch::install_torch()
+
+usethis::edit_r_environ()
 ```
 
 ## Data
@@ -17,9 +21,11 @@ library(torch)
 ```{r}
 
 load("/Volumes/GoogleDrive-103548588935465845166/Meu Drive/NLP_psicom/bfi/base_padrao.RData")
+load("/Volumes/GoogleDrive/Meu Drive/NLP_psicom/bfi/base_padrao.RData")
 
 save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, file = "../data/data_bfi_nlp.RData")
 
+library(reticulate)
 library(readxl)
 base_itens <- read_excel("../data/base_itens.xlsx")
 
@@ -84,21 +90,122 @@ glimpse(emb_itens_L6)
 
 str(data)
 
-# top5 cosine similarities
-library(reticulate)
+
+
+
+```
+
+```{r}
 
 # Import necessary modules
 pickle <- import("pickle")
 builtins <- import_builtins()
 
 # Open the pickle file and load it
-file <- builtins$open("/Volumes/GoogleDrive-103548588935465845166/Meu Drive/colB5BERT/cosim_L6.pkl", "rb")
+file <- builtins$open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/cosim_L6.pkl", "rb")
 cosim_L6 <- pickle$load(file)
 
 # Close the file after reading
 file$close()
 
 
+
 ```
 
+
+## Rearrange the array tom match python tensors
+
+```{r}
+
+x <- cosim_L6[[1]]
+
+
+new_array[1, , ]
+
+swapp_3_to_1 <- function(x){
+ 
+ # Initialize an empty array
+ new_array <-  array(0, dim = c(5, 14, 5))
+ old_array <- cosim_L6[[1]]
+ 
+ # loop over first dimension of batches
+ for (i in 1:5) {
+  # loop over third dimension of five cosim
+  for (j in 1:5) {
+   new_array[j, , i] <- old_array[i, , j]
+  }
+  
+ }
+ 
+ return(new_array)
+ 
+}
+new_array[1, , ] 
+cosim_L6[[1]][1, ,]
+
+# first is the 
+
+cosim_L6[[1]][1, ,]
+
+length(cosim_L6) * 5
+
+```
+
+```{r}
+# Cosim is bath X 
+
+dim(cosim_L6[[1]])
+
+aperm(cosim_L6[[1]], c(3, 2, 1)) %>% aperm(c(3, 2, 1)) 
+
+library(abind)
+cosim_L6 <- abind(cosim_L6, along = 1)
+
+# Use purrr::reduce() to combine the arrays along the first dimension
+cosim_L6 <- reduce(cosim_L6, abind::abind, along = 1)
+
+# Print the dimensions of the combined array
+print(dim(combined))
+
+array_dims <- purrr::map_int(cosim_L6, ~dim(.x)[2])
+length(array_dims)
+
+table(array_dims)
+library(purrr)
+library(rray)
+
+
+install.packages(c( "rray"))
+
+```
+
+
+### Estrutura dos dados
+
+* cosim_L6 lista de posts de 5 em 5. É um array baths X tokens dos itens X  5 cosim max do post
+* 5*length(cosim_L6) = 4787855
+
+
+```{r}
+5*length(cosim_L6)
+
+length(cosim_L6[1:2])
+typeof(cosim_L6[1:2])
+
+bind_rows(cosim_L6[[1]][, , ], cosim_L6[[2]][1, , ])
+
+
+cosim_L6[[1]][2,,]
+
+
+ # loop over first dimension of batches
+ for (i in 1:) {
+  # loop over third dimension of five cosim
+  for (j in 1:5) {
+   new_array[j, , i] <- old_array[i, , j]
+  }
+  
+ }
+
+```
 

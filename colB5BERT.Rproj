@@ -11,7 +11,3 @@ Encoding: UTF-8
 
 RnwWeave: knitr
 LaTeX: pdfLaTeX
-
-PythonType: system
-PythonVersion: 3.9.1
-PythonPath: /usr/local/bin/python3.9
