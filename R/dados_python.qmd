@@ -12,7 +12,6 @@ library(torch)
 # torch::install_torch()
 
 torch::install_torch()
-
 usethis::edit_r_environ()
 ```
 
@@ -29,13 +28,14 @@ library(reticulate)
 library(readxl)
 base_itens <- read_excel("../data/base_itens.xlsx")
 
-
+rm(builtins, file, pickle, reshaped_slices, slice, i, j, new_array, old_array, third_dim, x)
 ```
 
 ## Final data 
 ```{r}
 
 load("~/Dropbox (Personal)/B5_NLP/colB5BERT/data/data_bfi_nlp.RData")
+save.image("~/Dropbox (Personal)/B5_NLP/colB5BERT/data/data_bfi_nlp.RData")
 
 library(readr)
 db_textos_splitted <- read_delim("../data/db_textos.splitted.csv", 
@@ -67,7 +67,7 @@ db_textos_splited %>% select(-texto) %>%
 
 ## Reading embeddings saved in numpy arrays
 
-
+* In numpy npz file
 ```{r}
 library(reticulate)
 
@@ -91,10 +91,8 @@ glimpse(emb_itens_L6)
 str(data)
 
 
-
-
 ```
-
+* in pickle file .pkl
 ```{r}
 
 # Import necessary modules
@@ -102,20 +100,240 @@ pickle <- import("pickle")
 builtins <- import_builtins()
 
 # Open the pickle file and load it
-file <- builtins$open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/cosim_L6.pkl", "rb")
-cosim_L6 <- pickle$load(file)
+file <- builtins$open("cosim_scores_L6.pkl", "rb")
+cosim_L6_scores <- pickle$load(file)
 
 # Close the file after reading
 file$close()
 
 
+```
+
+
+
+## Preparing metadata for analysis
+
+```{r}
+
+item_dims <- purrr::map_int(cosim_L6, ~dim(.x)[2])
+length(array_dims) == length(cosim_L6)
+
+table(array_dims)
+
+third_dims <- purrr::map_int(cosim_L6, ~dim(.x)[3])
+
+table(third_dims )
+
+library(purrr)
+library(rray)
+install.packages(c( "rray"))
+table(length_tokens_itens)
+
+which(third_dims == 3, arr.ind = TRUE, useNames = TRUE)
+
+cosim_L6[[8495]][1,,]
 
 ```
 
 
-## Rearrange the array tom match python tensors
+### Structurre of the data 
+
+* cosim_L6 lista de 5 em 5 posts. É um array baths X tokens dos itens X  5 cosim max do post
+* 5*length(cosim_L6) = 4.787.855
+* this is a working solution but slow
 
 ```{r}
+
+cosim_L6b <- matrix(nrow = 0, ncol = 7)
+
+for (i in 1:length(cosim_L6)) {
+  
+ for (j in 1:5) {
+  
+  mat <- cosim_L6[[i]][j, , ]
+ 
+  # Check the number of columns in the current matrix and base matrix
+  num_cols_base <- 5
+  num_cols_current <- ncol(mat)
+  
+  if (num_cols_base > num_cols_current) {
+    # Add columns filled with NA to the current matrix
+    mat <- cbind(mat, matrix(rep(NA, (num_cols_base - num_cols_current) * nrow(mat)), nrow=nrow(mat)))
+  }
+   cosim_L6b <- rbind(cosim_L6b, cbind(batch = i, n_in_batch = j, mat))
+ }
+
+ }
+
+
+```
+
+* alternative faster version 
+
+```{r}
+
+install.packages(c("foreach", "doSNOW", "doParallel"))
+
+library(foreach)
+library(doParallel)
+library(doSNOW)
+
+# Set up the parallel backend
+cl <- makeCluster(detectCores() - 1)  # use all cores but one
+registerDoSNOW(cl)
+
+# Initialize an empty list to hold the results
+cosim_L6b <- list()
+
+# Use foreach for parallel processing with %dopar% and add a progress bar
+pb <- txtProgressBar(max = length(cosim_L6), style = 3)
+progress <- function(n) setTxtProgressBar(pb, n)
+opts <- list(progress = progress)
+registerDoSNOW(makeCluster(detectCores(), outfile = "", options = opts))
+
+cosim_L6b <- foreach(i = 1:length(cosim_L6), .packages = c("base", "stats")) %dopar% {
+  
+  cosim_L6b_i <- matrix(nrow = 0, ncol = 7)
+  
+  for (j in 1:5) {
+    
+    mat <- cosim_L6[[i]][j, , ]
+   
+    # Check the number of columns in the current matrix and base matrix
+    num_cols_base <- 5
+    num_cols_current <- ncol(mat)
+    
+    if (num_cols_base > num_cols_current) {
+      # Add columns filled with NA to the current matrix
+      mat <- cbind(mat, matrix(rep(NA, (num_cols_base - num_cols_current) * nrow(mat)), nrow=nrow(mat)))
+    }
+    
+    cosim_L6b_i <- rbind(cosim_L6b_i, cbind(batch = i, n_in_batch = j, mat))
+  }
+  
+  return(cosim_L6b_i)
+}
+
+close(pb)  # Close the progress bar
+
+# Stop the cluster
+stopCluster(cl)
+
+# Combine the results from all parallel operations
+cosim_L6b <- do.call(rbind, cosim_L6b)
+
+
+```
+
+### Calculate teh score in python
+* for each item token I summed the five higest similarities. I then averaged the score by item
+
+```{python}
+import numpy as np
+import pickle
+
+with open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/cosim_scores_L6.pkl", "rb") as file:
+    item_by_posts_scores = pickle.load(file)
+    
+
+```
+
+### Final item scores
+
+```{r}
+py$item_by_posts_scores
+
+hist(py$item_by_posts_scores)
+
+hist(data_L6_wide$BFI2_E_1)
+hist(data_L6_wide$E_rec)
+
+plot(data_L6_wide$BFI2_E_1, data_L6_wide$E_rec)
+
+
+item_by_posts_scores <- py$item_by_posts_scores
+
+rm(data_l6, chunks, file, cosim_L6, builtins, pickle)
+length(item_by_posts_scores)
+
+data_L6 <- tidyr::expand_grid(db_textos_splitted[ , c("id", "id_divisao")], coditem = base_itens$coditem)
+data_L6$post_by_item_scores = item_by_posts_scores
+
+
+```
+
+### Correlations between colB5BERT and tests
+
+```{r}
+sjmisc::frq(base_itens$domain)
+names(db_bfi)
+
+col_names <- names(dplyr::select(db_bfi, acq_indx_ori:N_rec))
+
+data_L6  <- data_L6  %>% 
+ left_join(base_itens[ , c(2, 3, 6, 8)], by = "coditem")
+
+data_L6  <- data_L6  %>% 
+ left_join(db_bfi[ , c(1, 64:69)], by = "id") 
+ 
+ names(data_L6)
+ 
+ data_L6  <- data_L6  %>% 
+   dplyr::select(-coditem) %>%
+   dplyr::group_by(id, id_divisao, test, domain, pole) %>%
+   dplyr::summarise(across(all_of(c("post_by_item_scores")), mean, na.rm=TRUE))
+
+
+data_L6_wide <- data_L6 %>% 
+ ungroup() %>%
+ filter(!is.na(domain)) %>%
+ pivot_wider(names_from = c(test, domain, pole), values_from = post_by_item_scores)
+
+
+data_L6_wide_subj <- data_L6_wide %>% 
+ group_by(id) %>%
+ summarise(across(everything(), mean)) 
+
+names(data_L6_wide)
+psych::corr.test(data_L6_wide[ , 9:40], data_L6_wide[ , 3:8])
+
+names(data_L6_wide_subj)
+
+psych::corr.test(data_L6_wide_subj[ , 9:40], data_L6_wide_subj[ , 3:8])
+
+
+data_L6_wide %>% ggplot(aes(y = BFI2_E_1 , x =E_rec)) + geom_point(alpha=1/2, color = "pink")
+
+data_L6_wide_subj %>% ggplot(aes(y = BFI2_A_0 , x =O_rec)) + geom_point(alpha=1/2)
+
+f <- as.formula( paste("O_rec=", paste(names(data_L6_wide_subj)[3:41], collapse = "+"), sep=""))
+
+fit <- lm( O_rec ~ acq_indx_ori +  BFI2_A_0 + 
+    BFI2_A_1 + BFI2_C_0 + BFI2_C_1 + BFI2_E_0 + BFI2_E_1 + BFI2_N_0 + 
+    BFI2_N_1 + BFI2_O_0 + BFI2_O_1 +  OCDE_SEMS_A_0 + 
+    OCDE_SEMS_A_1 + OCDE_SEMS_C_0 + OCDE_SEMS_C_1 + OCDE_SEMS_E_0 + 
+    OCDE_SEMS_E_1 + OCDE_SEMS_M_0 + OCDE_SEMS_M_1 + OCDE_SEMS_N_0 + 
+    OCDE_SEMS_N_1 + OCDE_SEMS_O_0 + OCDE_SEMS_O_1 + SENNA_A_0 + 
+    SENNA_A_1 + SENNA_C_0 + SENNA_C_1 + SENNA_E_0 + SENNA_E_1 + 
+    SENNA_N_0 + SENNA_N_1 + SENNA_O_0 + SENNA_O_1,  data_L6_wide_subj)
+summary(fit)
+
+sjPlot::tab_model(fit, std = TRUE)
+```
+
+
+
+### Miscelanea
+```{r}
+5*length(cosim_L6)
+cbind(batch = 1, n_in_batch = 2, cosim_L6[[83]][2, , ])
+length(cosim_L6[1:2])
+typeof(cosim_L6[1:2])
+
+rbind(cosim_L6[[1]][1, , ], cosim_L6[[2]][2, , ])
+
+
+cosim_L6[[1]][2,,]
 
 x <- cosim_L6[[1]]
 
@@ -141,71 +359,24 @@ swapp_3_to_1 <- function(x){
  
 }
 new_array[1, , ] 
-cosim_L6[[1]][1, ,]
+ncol(cosim_L6[[1]][1, ,])
 
 # first is the 
 
-cosim_L6[[1]][1, ,]
+dim(cosim_L6[[1]])
 
 length(cosim_L6) * 5
 
-```
-
-```{r}
-# Cosim is bath X 
-
-dim(cosim_L6[[1]])
-
-aperm(cosim_L6[[1]], c(3, 2, 1)) %>% aperm(c(3, 2, 1)) 
-
-library(abind)
-cosim_L6 <- abind(cosim_L6, along = 1)
-
-# Use purrr::reduce() to combine the arrays along the first dimension
-cosim_L6 <- reduce(cosim_L6, abind::abind, along = 1)
-
-# Print the dimensions of the combined array
-print(dim(combined))
-
-array_dims <- purrr::map_int(cosim_L6, ~dim(.x)[2])
-length(array_dims)
-
-table(array_dims)
-library(purrr)
-library(rray)
+batch = c(rep(1, 5), rep(2, 5), rep(3, 5),  rep(4, 5), rep(5, 5))
 
 
-install.packages(c( "rray"))
 
-```
+# Let's assume 'names' is your vector of names, and 'values' is your vector of numbers
+names <- c(...)  # replace with your data
+values <- c(...)  # replace with your data
 
-
-### Estrutura dos dados
-
-* cosim_L6 lista de posts de 5 em 5. É um array baths X tokens dos itens X  5 cosim max do post
-* 5*length(cosim_L6) = 4787855
-
-
-```{r}
-5*length(cosim_L6)
-
-length(cosim_L6[1:2])
-typeof(cosim_L6[1:2])
-
-bind_rows(cosim_L6[[1]][, , ], cosim_L6[[2]][1, , ])
-
-
-cosim_L6[[1]][2,,]
-
-
- # loop over first dimension of batches
- for (i in 1:) {
-  # loop over third dimension of five cosim
-  for (j in 1:5) {
-   new_array[j, , i] <- old_array[i, , j]
-  }
-  
- }
+# Apply mean function to each group of values defined by names
+averages <- tapply(values, names, mean)
 
 ```
 

@@ -16,7 +16,7 @@ conn = pymysql.connect(
 
 db_config = {
     'user': 'labape6',
-    'password': 'mypassword',
+    'password': 'yyzrushk98159',
     'host':  'mysql08.labape.com.br',
     'database': 'labape6',
     'raise_on_warnings': True
