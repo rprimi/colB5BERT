@@ -1,0 +1,380 @@
+---
+title: "dados_training"
+format: html
+---
+
+## Libraries
+
+```{r}
+library(tidyverse)
+library(reticulate)
+library(readxl)
+
+
+```
+
+
+## Final data 
+```{r}
+
+load("~/Dropbox (Personal)/B5_NLP/colB5BERT/data/data_bfi_nlp.RData")
+# save.image("~/Dropbox (Personal)/B5_NLP/colB5BERT/data/data_bfi_nlp.RData")
+
+
+```
+
+### Preparing data for finetuning
+
+* Creating postive examples using score in BFI. 
+* I will use the percentile 25 and 75 as cut scores for high and low "positive" examples.
+```{r}
+
+names(db_bfi)
+
+quantile(db_bfi$O_rec)[["25%"]]
+quantile(db_bfi$O_rec)[["75%"]]
+
+quantile(db_bfi$O_rec)[["25%"]] %>% glimpse
+hist(db_bfi$O_rec)
+walk(db_bfi[ , 65:69], hist)
+
+db_bfi[ ,c(65, 108:109)] %>% view
+
+db_bfi <- db_bfi %>%
+ mutate(
+  O_hi = ifelse(O_rec >= quantile(O_rec)[["75%"]], 1, 0 ),
+  O_lw = ifelse(O_rec <= quantile(O_rec)[["25%"]], 1, 0 ),
+  
+  C_hi = ifelse(C_rec >= quantile(C_rec)[["75%"]], 1, 0 ),
+  C_lw = ifelse(C_rec <= quantile(C_rec)[["25%"]], 1, 0 ),
+  
+  E_hi = ifelse(E_rec >= quantile(E_rec)[["75%"]], 1, 0 ),
+  E_lw = ifelse(E_rec <= quantile(E_rec)[["25%"]], 1, 0 ),
+  
+  A_hi = ifelse(A_rec >= quantile(A_rec)[["75%"]], 1, 0 ),
+  A_lw = ifelse(A_rec <= quantile(A_rec)[["25%"]], 1, 0 ),
+  
+  N_hi = ifelse(N_rec >= quantile(N_rec)[["75%"]], 1, 0 ),
+  N_lw = ifelse(N_rec <= quantile(N_rec)[["25%"]], 1, 0 )
+ )
+
+
+```
+
+
+### Creating all combinations of items with posts
+
+```{r}
+
+sjmisc::frq(base_itens$domain)
+
+base_itens %>% glimpse
+
+itens_queries <- base_itens %>% 
+ filter(domain !="M", !is.na(domain)) %>%
+ select(coditem, domain, pole, item_pt_text)
+
+names(db_bfi)
+
+dataset <- tidyr::expand_grid(itens_queries, db_textos_splitted)
+
+v <- names(db_bfi)[c(1, 108:117)]
+dataset <- dataset %>% left_join(db_bfi[v])
+
+# dataset[11535:22535, ] %>% view
+
+glimpse(dataset)
+
+# If item matchs person trait, his/her posts are positive example of query/doc match
+
+dataset <- dataset %>% 
+ mutate(
+  postive_ex = case_when(
+   domain == "O" & pole ==1 & O_hi ==1 ~1, 
+   domain == "O" & pole ==0 & O_lw ==1 ~1, 
+   
+   domain == "C" & pole ==1 & C_hi ==1 ~1, 
+   domain == "C" & pole ==0 & C_lw ==1 ~1, 
+   
+   domain == "E" & pole ==1 & E_hi ==1 ~1, 
+   domain == "E" & pole ==0 & E_lw ==1 ~1, 
+   
+   domain == "A" & pole ==1 & A_hi ==1 ~1, 
+   domain == "A" & pole ==0 & A_lw ==1 ~1, 
+ 
+   domain == "N" & pole ==1 & N_hi ==1 ~1, 
+   domain == "N" & pole ==0 & N_lw ==1 ~1, 
+   
+   TRUE ~ 0
+   )
+  )
+
+
+sjmisc::frq(dataset$postive_ex)
+sjmisc::frq(dataset$C_hi)
+
+names(dataset)
+
+```
+
+
+
+### Spliting training and test set
+
+```{r}
+# Load the caret package
+library(caret)
+
+# Get subjects ids 
+subj_ids = unique(dataset$id)
+subj_ids = unique(db_textos_splitted$id)
+
+# Create a partition
+set.seed(23)  # for reproducibility
+train_id_indexes <- createDataPartition(subj_ids, p=0.85, list=TRUE)
+
+train_ids <- subj_ids[train_id_indexes$Resample1]
+test_ids <- subj_ids[-train_id_indexes$Resample1]
+
+v <- names(dataset)[c(1:7, 18)]
+
+dataset %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% train_ids) %>%
+ saveRDS(file = "../data/dataset_train.RDS")
+
+
+dataset %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% test_ids ) %>%
+ saveRDS(file = "../data/dataset_test.RDS")
+
+
+dataset %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% train_ids) %>%
+ write_tsv(file = "../data/dataset_train.tsv")
+
+dataset %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% test_ids ) %>%
+ write_tsv(file = "../data/dataset_test.tsv")
+
+
+
+```
+
+
+### New way keeping only positive examples
+
+```{r}
+
+names(dataset2)
+
+dataset2 <- dataset %>% filter(postive_ex==1)
+
+unique(dataset2$id) %>% length
+
+set.seed(23) 
+dataset2 <- dataset2[sample(nrow(dataset2)), ]
+
+
+
+dataset2[1:1000, ] %>% view
+
+v <- names(dataset)[c(1:7)]
+
+dataset2 %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% train_ids) %>%
+# pull(id) %>% unique %>% length
+ write_tsv(file = "../data/dataset_train_positive.tsv")
+
+dataset2 %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% test_ids ) %>%
+#  pull(id) %>% unique %>% length
+ write_tsv(file = "../data/dataset_test_positive.tsv")
+
+
+dataset %>% dplyr::select(all_of(v)) %>%
+ dplyr::filter(id %in% train_ids) %>% dim
+
+```
+
+
+### Calculate score in python
+* for each item token I summed the five higest similarities. I then averaged the score by item
+
+```{python}
+import numpy as np
+import pickle
+
+
+with open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/b5_scores2.pkl", "rb") as file:
+   b5_scores = pickle.load(file)
+
+```
+
+### Final item scores
+
+```{r}
+
+dataset_test <- readr::read_tsv("../data/dataset_test.tsv")
+dataset_test$sim_scores = as.numeric(py$b5_scores)
+
+
+```
+
+### Correlations between colB5BERT and tests
+* Layer 6 (problema dos zeros)
+```{r}
+
+names(dataset_test)
+names(base_itens)
+
+
+dataset_test  <- dataset_test  %>% 
+ left_join(db_bfi[ , c(1, 64:69)], by = "id") 
+
+dataset_test   <- dataset_test   %>% 
+ left_join(base_itens[ , c(2, 3, 7)], by = "coditem")
+
+dataset_test[1:1000,] %>% view
+
+psych::corr.test(dataset_test[ , 10:15], dataset_test[ , 9])
+
+vars <- names(dataset_test)[9:15]
+
+dataset_test2  <- dataset_test  %>% 
+   dplyr::select(-coditem, -postive_ex, -texto_dividido) %>%
+   dplyr::group_by(id, id_divisao, test, domain, facet, pole) %>%
+   dplyr::summarise(across(all_of(vars), mean, na.rm=TRUE))
+
+psych::corr.test(dataset_test2[ , 8:13], dataset_test2[ , 7])
+
+
+dataset_test2_wide <-  dataset_test2  %>%
+  ungroup() %>%
+  filter(!is.na(domain)) %>%
+  pivot_wider(
+   names_from = c(test, domain, facet, pole),
+   values_from = sim_scores)
+
+
+names(dataset_test2_wide2 )
+
+dataset_test2_wide2 <-  dataset_test2  %>%
+  ungroup() %>%
+  filter(!is.na(domain)) %>%
+   dplyr::select(-test, -facet) %>%
+   dplyr::group_by(id, id_divisao,domain,  pole) %>%
+   dplyr::summarise(across(all_of(vars), mean, na.rm=TRUE)) %>%
+  pivot_wider(
+   names_from = c(domain, pole),
+   values_from = sim_scores)
+
+
+t1 <- psych::corr.test(dataset_test2_wide[ , 9:106], dataset_test2_wide[ , 3:8]) %>% .$r 
+t1b <- as.data.frame(t1) %>% mutate(vars = dimnames(t1)[[1]])
+writexl::write_xlsx(t1b , path="../data/results.xlsx")
+
+psych::corr.test(dataset_test2_wide2[ ,  9:18], dataset_test2_wide2[ ,3:8])
+ 
+dataset_test2_wide_subj <- dataset_test2_wide %>% 
+ group_by(id) %>%
+ summarise(across(everything(), mean)) 
+
+dataset_test2_wide_subj2 <- dataset_test2_wide2 %>% 
+ group_by(id) %>%
+ summarise(across(everything(), mean)) 
+
+
+names(dataset_test2_wide_subj)
+psych::corr.test(dataset_test2_wide_subj[ , 9:106], dataset_test2_wide_subj[ , 3:8])
+
+
+t2 <- psych::corr.test(dataset_test2_wide_subj[ , 9:106], dataset_test2_wide_subj[ , 3:8]) %>% .$r 
+t2b <- as.data.frame(t2) %>% mutate(vars = dimnames(t2)[[1]])
+writexl::write_xlsx(t2b , path="../data/results2.xlsx")
+
+names(dataset_test2_wide_subj2)
+psych::corr.test(dataset_test2_wide_subj2[ , 9:18], dataset_test2_wide_subj2[ , 3:8])
+
+
+predictors <- paste(names(dataset_test2_wide_subj[ , 9:106]), collapse = " + ")
+response <- "O_rec ~ acq_indx_ori + "
+
+predictors <- paste(names(dataset_test2_wide_subj2[ , 9:18]), collapse = " + ")
+response <- "O_rec ~ acq_indx_ori + "
+response <- "C_rec ~ acq_indx_ori + "
+response <- "E_rec ~ acq_indx_ori + "
+response <- "A_rec ~ acq_indx_ori + "
+response <- "N_rec ~ acq_indx_ori + "
+
+response <- "O_rec ~ "
+response <- "C_rec ~ "
+response <- "E_rec ~ "
+response <- "A_rec ~  "
+response <- "N_rec ~  "
+
+f <- as.formula(paste(response, predictors))
+fit <- lm( f , dataset_test2_wide_subj2)
+broom::glance(fit)
+broom::tidy(fit)
+lm.beta::lm.beta(fit) %>% broom::tidy()
+stats::summary.lm(fit)
+
+broom::augment(fit) %>% ggplot(aes(y = O_rec , x =.fitted)) +
+ geom_point(alpha=.8, color = "pink") +
+ geom_smooth() +
+ scale_x_continuous(breaks = scales::breaks_pretty(n=5), limits=c(2,5)) +
+ scale_y_continuous(breaks = scales::breaks_pretty(n = 5), limits=c(1,5)) 
+
+
+
+```
+
+
+### Resultados para o relatorio
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+
+
+# Calculate 25th and 75th percentiles
+p25 <- quantile(db_bfi$E_rec, 0.25)
+p75 <- quantile(db_bfi$E_rec, 0.75)
+
+
+# Assuming
+# Calculate density
+df_density <- density(db_bfi$E_rec)
+df_density <- data.frame(x = df_density$x, y = df_density$y)
+
+# Create a histogram with density plot
+p <- ggplot(db_bfi, aes(x=E_rec)) +
+  geom_histogram(aes(fill = ifelse(E_rec < p25 | E_rec > p75, "pink", "skyblue")), 
+                 binwidth=0.5, alpha=0.5, position="identity", color ="gray") +
+ # geom_line(data = df_density, aes(x = x, y = y), color = "red", size = 1) +
+  geom_vline(aes(xintercept=p25), color="blue", linetype="dashed", size=1, alpha = 1/2) +
+  geom_vline(aes(xintercept=p75), color="red", linetype="dashed", size=1, alpha = 1/2) +
+  annotate("text", x = p25, y=0.5, label = "P25", hjust=-0.1, color="blue", alpha = 1/2) +
+  annotate("text", x = p75, y=0.5, label = "P75", hjust=1.1, color="red", alpha = 1/2) +
+  theme_minimal() + guides(fill=FALSE) 
+
+
+print(p)
+
+
+
+
+
+
+
+
+
+
+```
+
+```{r}
+readr::read_tsv("../data/dataset_train_positive.tsv") %>% dim
+readr::read_tsv("../data/dataset_test_positive.tsv") %>% dim
+```
+

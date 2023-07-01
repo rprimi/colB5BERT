@@ -8,6 +8,10 @@ editor: source
 
 ```{r}
 library(tidyverse)
+library(reticulate)
+library(readxl)
+
+
 library(torch)
 # torch::install_torch()
 
@@ -24,8 +28,7 @@ load("/Volumes/GoogleDrive/Meu Drive/NLP_psicom/bfi/base_padrao.RData")
 
 save(db_textos, db_bfi, lexical, split_texts, slide_windows, nearest_neighbors, file = "../data/data_bfi_nlp.RData")
 
-library(reticulate)
-library(readxl)
+
 base_itens <- read_excel("../data/base_itens.xlsx")
 
 rm(builtins, file, pickle, reshaped_slices, slice, i, j, new_array, old_array, third_dim, x)
@@ -110,7 +113,6 @@ file$close()
 ```
 
 
-
 ## Preparing metadata for analysis
 
 ```{r}
@@ -168,7 +170,7 @@ for (i in 1:length(cosim_L6)) {
 
 ```
 
-* alternative faster version 
+* Alternative faster version 
 
 ```{r}
 
@@ -225,7 +227,7 @@ cosim_L6b <- do.call(rbind, cosim_L6b)
 
 ```
 
-### Calculate teh score in python
+### Calculate score in python
 * for each item token I summed the five higest similarities. I then averaged the score by item
 
 ```{python}
@@ -234,7 +236,9 @@ import pickle
 
 with open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/cosim_scores_L6.pkl", "rb") as file:
     item_by_posts_scores = pickle.load(file)
-    
+
+with open("/Volumes/GoogleDrive/Meu Drive/colB5BERT/cosim_scores_L11.pkl", "rb") as file:
+    item_by_posts_scores11 = pickle.load(file)
 
 ```
 
@@ -260,11 +264,17 @@ data_L6 <- tidyr::expand_grid(db_textos_splitted[ , c("id", "id_divisao")], codi
 data_L6$post_by_item_scores = item_by_posts_scores
 
 
+data_L11 <- tidyr::expand_grid(db_textos_splitted[ , c("id", "id_divisao")], coditem = base_itens$coditem)
+
+data_L11$post_by_item_scores =  py$item_by_posts_scores11
+
+hist(data_L11$post_by_item_scores)
 ```
 
 ### Correlations between colB5BERT and tests
-
+* Layer 6 (problema dos zeros)
 ```{r}
+
 sjmisc::frq(base_itens$domain)
 names(db_bfi)
 
@@ -320,6 +330,74 @@ summary(fit)
 
 sjPlot::tab_model(fit, std = TRUE)
 ```
+
+* Layer 11
+```{r}
+
+sjmisc::frq(base_itens$domain)
+names(db_bfi)
+
+col_names <- names(dplyr::select(db_bfi, acq_indx_ori:N_rec))
+
+data_L11  <- data_L11  %>% 
+ left_join(base_itens[ , c(2, 3, 6, 8)], by = "coditem")
+
+data_L11  <- data_L11  %>% 
+ left_join(db_bfi[ , c(1, 64:69)], by = "id") 
+ 
+ names(data_L6)
+ 
+ data_L11  <- data_L11  %>% 
+   dplyr::select(-coditem) %>%
+   dplyr::group_by(id, id_divisao, test, domain, pole) %>%
+   dplyr::summarise(across(all_of(c("post_by_item_scores")), mean, na.rm=TRUE))
+
+
+data_L11_wide <- data_L11 %>% 
+ ungroup() %>%
+ filter(!is.na(domain)) %>%
+ pivot_wider(names_from = c(test, domain, pole), values_from = post_by_item_scores)
+
+
+data_L11_wide_subj <- data_L11_wide %>% 
+ group_by(id) %>%
+ summarise(across(everything(), mean)) 
+
+
+data_L11_wide   <- data_L11_wide  %>% 
+ left_join(db_bfi[ , c(1, 64:69)], by = "id") 
+
+data_L11_wide_subj <- data_L11_wide_subj %>% 
+ left_join(db_bfi[ , c(1, 64:69)], by = "id") 
+
+names(data_L11_wide)
+
+psych::corr.test(data_L11_wide[ , 3:34], data_L11_wide[ , 35:40])
+
+names(data_L11_wide_subj)
+
+psych::corr.test(data_L11_wide_subj[ , 3:34], data_L11_wide_subj[ , 35:40])
+
+
+data_L6_wide %>% ggplot(aes(y = BFI2_E_1 , x =E_rec)) + geom_point(alpha=1/2, color = "pink")
+
+data_L6_wide_subj %>% ggplot(aes(y = BFI2_A_0 , x =O_rec)) + geom_point(alpha=1/2)
+
+f <- as.formula( paste("O_rec=", paste(names(data_L6_wide_subj)[3:41], collapse = "+"), sep=""))
+
+fit <- lm( O_rec ~ acq_indx_ori +  BFI2_A_0 + 
+    BFI2_A_1 + BFI2_C_0 + BFI2_C_1 + BFI2_E_0 + BFI2_E_1 + BFI2_N_0 + 
+    BFI2_N_1 + BFI2_O_0 + BFI2_O_1 +  OCDE_SEMS_A_0 + 
+    OCDE_SEMS_A_1 + OCDE_SEMS_C_0 + OCDE_SEMS_C_1 + OCDE_SEMS_E_0 + 
+    OCDE_SEMS_E_1 + OCDE_SEMS_M_0 + OCDE_SEMS_M_1 + OCDE_SEMS_N_0 + 
+    OCDE_SEMS_N_1 + OCDE_SEMS_O_0 + OCDE_SEMS_O_1 + SENNA_A_0 + 
+    SENNA_A_1 + SENNA_C_0 + SENNA_C_1 + SENNA_E_0 + SENNA_E_1 + 
+    SENNA_N_0 + SENNA_N_1 + SENNA_O_0 + SENNA_O_1,  data_L6_wide_subj)
+summary(fit)
+
+sjPlot::tab_model(fit, std = TRUE)
+```
+
 
 
 
