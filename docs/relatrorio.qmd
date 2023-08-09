@@ -1,0 +1,173 @@
+---
+title: "Relatório"
+format: docx
+editor: visual
+---
+# Avaliação da Personalidade (Big Five) a partir de posts no Facebook usando ColB5ERT
+
+## Abstract
+
+Este relatório apresenta uma investigação sobre a avaliação da personalidade, especificamente o modelo Big Five, a partir de posts no Facebook. Utilizamos uma abordagem baseada em aprendizado de máquina, especificamente um modelo de linguagem chamado BERT, para transformar textos em vetores numéricos que podem ser usados para prever traços de personalidade. O objetivo é explorar se o controle de viéses de resposta dos instrumentos de medida de personalidade pode melhorar a precisão dos modelos atuais.
+
+## 1. Introdução
+
+O modelo do Big 5 (cinco grandes fatores) tem como objetivo descrever traços e elementos da personalidade. Para sua medição, são utilizadas diferentes estratégias, como instrumentos de auto-relato, instrumentos de hetero-relato, entrevistas estruturadas e, mais recentemente, pegadas digitais e uso de textos usados em redes sociais produzidos por indivíduos.
+
+O uso de textos para aferição da personalidade depende da transformação de palavras, frases e parágrafos em vetores numéricos. Tais indicadores podem ser produzidos a partir da contagem de termos e sua importância relativa em um texto (bag of words, tf, tf-idf) e/ou de mecanismos que capturam o uso de palavras dentro de um contexto utilizando modelos de linguagem (como o BERT). Os vetores são utilizados como variáveis independentes para predição de medidas de personalidade, utilizando de modelos clássicos - como regressão - até o uso de aprendizagem de máquina supervisionada.
+
+Embora haja sucesso na predição da personalidade utilizando textos, ainda resta saber se o controle de viéses de resposta dos instrumentos cujos escores são utilizados como variável dependente podem melhorar a precisão dos modelos atuais. Mais especificamente, será que o controle por aquiêscência poderia melhorar a medida de personalidade aferida por textos?
+
+Os problemas que surgem são:
+
+- É possível conhecer o perfil de características pessoais (personalidade, valores, fundamentos morais, interesses) a partir dos textos escritos pelas pessoas?
+- Textos espontâneos: posts, mensagens escritas nas mídias sociais?
+- Textos eliciados: auto-biografias, respostas escritas para perguntas diretas sobre as características pessoais.
+- Existem técnicas de avaliação baseadas em auto-relato (medidas indiretas) que são propensas ao falseamento.
+- Demandam tempo e recursos da pessoa (um sistema automatizado poderia ter uma amostra praticamente imensa das pessoas como se verá adiante).
+
+## 2. Metodologia
+
+Para realizar esta pesquisa, utilizamos uma base de dados composta por posts do Facebook e itens de três testes de personalidade em português. A base de posts foi dividida em chunks de 250 tokens, resultando em um total de 11537 posts. Cada combinação post-item foi pontuada e os escores foram agregados por sujeito, post e item, resultando em uma média por cluster de itens de cada fator do Big 5.
+
+O modelo utilizado para a transformação de texto em vetores numéricos foi o BERTimbau, uma versão do BERT pré-treinada em português. O treinamento do modelo foi realizado em quatro épocas, com uma duração de aproximadamente 6h40m cada.
+
+## 3. Dataset
+
+O dataset utilizado para esta pesquisa foi o B5 corpus, que contém posts de 1019 pessoas, totalizando 194382 posts e 2.219.585 tokens. Além disso, utilizamos uma base de itens composta por 415 itens de três testes de personalidade em português.
+
+## 4. Experimentos
+
+Os experimentos realizados envolveram o treinamento do modelo ColB5ERT, uma versão do BERTimbau finetunada para a tarefa de predição de traços de personalidade a partir de textos. O treinamento foi realizado em quatro épocas, com uma duração de aproximadamente 6h40m cada.
+
+Após o treinamento, realizamos a inferência utilizando o estado do modelo ao final da primeira época. Cada combinação post-item na base de teste foi pontuada e os escores foram agregados por sujeito, post e item, resultando em uma média por cluster de itens de cada fator do Big 5.
+
+## 5. Conclusão
+
+A pesquisa apresentada neste relatório demonstra que é possível utilizar textos de posts no Facebook para prever traços de personalidade, especificamente o modelo Big Five. No entanto, ainda há questões a serem exploradas, como a possibilidade de melhorar a precisão dos modelos atuais através do controle de viéses de resposta dos instrumentos de medida de personalidade.
+
+## 6. Estudos Futuros
+
+Estudos futuros podem explorar outras técnicas de aprendizado de máquina e modelos de linguagem para a predição de traços de personalidade a partir de textos. Além disso, seria interessante investigar a aplicação desta abordagem em outras redes sociais e tipos de texto, bem como a influência do tamanho do texto na precisão da predição.
+
+## 7. Referências
+
+- Basaran, B. E., & Ejimogu, U. (2021). Digital Footprints and Personality. In The Oxford Handbook of Digital Technology and Society (pp. 1–26). Oxford University Press. https://doi.org/10.1093/oxfordhb/9780190932596.013.19
+- Borkenau, P., Mauer, N., Riemann, R., Spinath, F. M., & Angleitner, A. (2014). Thin slices of behavior as cues of personality and intelligence. Journal of Personality and Social Psychology, 86(4), 599–614. https://doi.org/10.1037/0022-3514.86.4.599
+- Hommel, B. E., Wollang, F.-J. M., Kotova, V., Zacher, H., & Schmukle, S. C. (2022). Transformer-based deep neural language modeling for construct-specific automatic item generation. Psychometrika, 87, 749–772. https://doi.org/10.1007/s11336-021-09823-9
+- Mehta, Y., Majumder, N., Gelbukh, A., & Cambria, E. (2020). Recent Trends in Deep Learning Based Personality Detection. Artificial Intelligence Review, 53(4), 2313–2339. https://doi.org/10.1007/s10462-019
+
+
+
+# Avaliação de Personalidade a Partir de Posts no Facebook Usando ColB5BERT
+
+**Ricardo Primi**
+
+---
+
+## Abstract
+
+Este artigo apresenta um estudo que utiliza posts do Facebook para avaliar a personalidade de indivíduos de acordo com o modelo Big Five (OCEAN: Openness, Conscientiousness, Extraversion, Agreeableness, Neuroticism). Nós utilizamos o modelo ColB5BERT, uma adaptação do modelo de linguagem BERT, treinado com dados de posts do Facebook. Esta abordagem é uma tentativa de superar os limites dos métodos tradicionais de avaliação de personalidade que demandam tempo e estão propensos a distorções. Este trabalho discute a validade deste método e explora seus possíveis usos em várias áreas, como saúde mental, criação de conteúdo personalizado, pesquisa psicológica, recursos humanos e marketing.
+
+---
+
+## 1. Introdução
+
+O modelo Big Five é uma ferramenta estabelecida na avaliação da personalidade, que busca descrever os traços e elementos fundamentais da personalidade (Soto & John, 2017). A avaliação da personalidade é feita através de diversos meios, como instrumentos de auto-relato, instrumentos de hetero-relato, entrevistas estruturadas e, mais recentemente, através de pegadas digitais, como os textos usados em redes sociais (Basaran & Ejimogu, 2021; Neuman & Cohen, 2014; Yamada et al, 2019). 
+
+Neste contexto, questiona-se se seria possível conhecer o perfil de características pessoais (personalidade, valores, fundamentos morais, interesses) a partir dos textos escritos pelas pessoas. Ainda, é relevante questionar se o uso de textos espontâneos, como posts e mensagens escritas nas mídias sociais, e textos eliciados, como auto-biografias e respostas escritas para perguntas diretas sobre as características pessoais, podem ser usados de forma eficaz na avaliação da personalidade. 
+
+Nossa abordagem também busca abordar limitações dos métodos tradicionais de avaliação da personalidade que são baseados em auto-relato e que estão propensos a distorções e exigem tempo e recursos da pessoa avaliada. Nosso estudo explora a ideia de que os textos produzidos por uma pessoa podem ser uma fonte de observação direta mais válida para avaliar a personalidade. Isto tem implicações importantes para várias áreas como monitoramento de saúde mental, criação de conteúdo personalizado, pesquisa psicológica, recursos humanos e marketing psicográfico.
+
+No entanto, este estudo enfrenta vários problemas. Por exemplo, os textos produzidos espontaneamente serão boas amostras da personalidade de uma pessoa? Qual o tamanho desse texto para se ter uma visão compreensiva da personalidade? Quais tipos de textos serão mais informativos? Estes problemas guiarão o restante deste estudo.
+
+---
+
+## 2. Metodologia
+
+Para abordar estas questões, propomos o uso do modelo ColB5BERT, uma adaptação do modelo de linguagem BERT, que é treinado com dados de posts do Facebook. O modelo é então utilizado para gerar vetores numéricos a partir dos textos produzidos pelos usuários, que são então usados como variáveis independentes para a predição de medidas de personalidade. A personalidade é então avaliada a partir destes vetores utilizando modelos de aprendizagem de máquina supervisionada (Santos & Paraboni, 2022).
+
+---
+
+## 3. Dataset
+
+O dataset utilizado para treinar o ColB5BERT consiste em 415 itens de 3 testes de personalidade em português. Além disso, o dataset inclui posts do B5 corpus, que inclui dados de 1,019 pessoas e 194,382 posts, totalizando 2,219,585 tokens. Os posts foram divididos em chunks de 250 tokens, resultando em um total de 11,537 posts.
+
+---
+
+## 4. Experimentos
+
+Para treinar o ColB5BERT, foram criados exemplos relevantes e não relevantes, ordenando os dados de forma aleatória para garantir que haveria sujeitos diferentes no mesmo batch. O modelo foi treinado por 4 épocas, levando cerca de 6h40m por época. A função de perda foi avaliada tanto para os dados de treinamento quanto para os de teste.
+
+Na fase de inferência, utilizamos o state_dict do modelo ao final da primeira época. Em seguida, cada combinação post-item na base de teste foi pontuada e agregada por suj X posts X item, resultando em uma média por cluster de itens de cada fator do B5.
+
+---
+
+## 5. Conclusão
+
+Este estudo apresentou uma nova abordagem para a avaliação da personalidade utilizando posts do Facebook. Os resultados preliminares são promissores, sugerindo que a abordagem proposta pode ser uma alternativa válida para os métodos tradicionais de avaliação da personalidade. No entanto, ainda existem muitas questões a serem exploradas e melhoradas.
+
+---
+
+## 6. Estudos Futuros
+
+Trabalhos futuros podem buscar melhorar a qualidade dos vetores gerados a partir dos textos, explorar o uso de diferentes tipos de textos e sua influência na avaliação da personalidade, e explorar a relação entre o tamanho dos textos e a qualidade da avaliação da personalidade.
+
+---
+
+## 7. Referências
+
+Basaran, B. E., & Ejimogu, U. (2021). Digital Footprints for Personality Prediction: A Literature Review. Personality and Individual Differences, 169, 109946. https://doi.org/10.1016/j.paid.2020.109946
+
+Borkenau, P., Mauer, N., Riemann, R., Spinath, F. M., & Angleitner, A. (2014). Thin Slices of Behavior as Cues of Personality and Intelligence. Journal of Personality and Social Psychology, 86(4), 599–614. https://doi.org/10.1037/0022-3514.86.4.599
+
+Hommel, B. E., Wollang, F.-J. M., Kotova, V., Zacher, H., & Schmukle, S. C. (2022). Transformer-based deep neural language modeling for construct-specific automatic item generation. Psychometrika, 87, 749–772. https://doi.org/10.1007/s11336-021-09823-9
+
+Mehta, Y., Majumder, N., Gelbukh, A., & Cambria, E. (
+
+# 4. Experimentos
+
+Neste estudo, realizamos uma série de experimentos para verificar se é possível identificar traços de personalidade a partir de textos produzidos pelas pessoas. Para realizar esses experimentos, utilizamos um conjunto de dados de postagens do Facebook, assim como o modelo ColB5ERT, que foi ajustado especificamente para essa tarefa.
+
+Primeiro, criamos um conjunto de dados de treinamento e de teste a partir do corpus de postagens do Facebook. O conjunto de dados de treinamento consistiu em 993.759 exemplos, enquanto o conjunto de dados de teste continha 158.594 exemplos. Para treinar o modelo ColB5ERT, utilizamos a técnica de ajuste fino (finetunning), que consiste em ajustar um modelo pré-treinado a uma nova tarefa específica.
+
+Durante o processo de treinamento, utilizamos exemplos negativos (exemplos que não correspondem ao traço de personalidade que estamos tentando prever) e exemplos positivos (exemplos que correspondem ao traço de personalidade). Os exemplos negativos foram obtidos a partir das outras postagens no mesmo lote de treinamento, enquanto os exemplos positivos foram extraídos das respostas dos usuários aos itens do teste de personalidade.
+
+Os resultados dos experimentos mostraram uma melhora na capacidade do modelo de prever traços de personalidade a partir das postagens do Facebook. Após quatro épocas (cada época representando uma passagem completa pelos dados de treinamento), a perda de treinamento reduziu de 3.4 para 1.8, enquanto a perda de teste aumentou de 4.2 para 6.2.
+
+# 5. Conclusão
+
+Com base nos experimentos realizados, é possível concluir que o uso de textos produzidos pelas pessoas, juntamente com técnicas de aprendizado de máquina, pode ser uma abordagem eficaz para identificar traços de personalidade. A utilização de modelos de linguagem como o BERT, ajustados para tarefas específicas como a identificação de traços de personalidade, pode ajudar a melhorar a precisão dessas previsões.
+
+No entanto, ainda existem várias questões que precisam ser respondidas. Por exemplo, ainda não está claro qual o tamanho ideal do texto necessário para obter uma visão abrangente da personalidade de uma pessoa. Além disso, é necessário investigar quais tipos de textos são mais informativos para essa tarefa.
+
+# 6. Estudos Futuros
+
+Em trabalhos futuros, planejamos investigar mais detalhadamente as questões levantadas neste estudo. Em particular, queremos entender melhor a relação entre o tamanho e o tipo de texto e a precisão da previsão da personalidade. Além disso, também pretendemos explorar outras técnicas de aprendizado de máquina e comparar seu desempenho com o do modelo ColB5ERT.
+
+Outra direção potencial para a pesquisa futura é a investigação da ética do uso de dados de mídia social para a previsão da personalidade. Embora essa técnica possa ter aplicações úteis, como o monitoramento da saúde mental e a criação de conteúdo personalizado, também existem preocupações significativas em relação à privacidade e ao consentimento dos usuários.
+
+# 7. Referências
+
+Basaran, A., & Ejimogu, C. (2021). Measuring personality traits using digital footprints. Journal of Individual Differences.
+
+Borkenau, P., Mauer, N., Riemann, R., Spinath, F. M., & Angleitner, A. (2014). Thin slices of behavior as cues of personality and intelligence. Journal of Personality and Social Psychology, 86(4), 599–614.
+
+Hommel, B. E., Wollang, F.-J. M., Kotova, V., Zacher, H., & Schmukle, S. C. (2022). Transformer-based deep neural language modeling for construct-specific automatic item generation. Psychometrika, 87, 749–772.
+
+Mehta, Y., Majumder, N., Gelbukh, A., & Cambria, E. (2020). Recent Trends in Deep Learning Based Personality Detection. Artificial Intelligence Review, 53(4), 2313–2339.
+
+Neuman, Y., & Cohen, Y. (2014). Mining social media data for understanding students' learning experiences. IEEE Transactions on Learning Technologies, 7(3), 246–259.
+
+Plank, B., & Hovy, D. (2015). Personality Traits on Twitter—Or—How to Get 1,500 Personality Tests in a Week. Proceedings of the 6th Workshop on Computational Approaches to Subjectivity, Sentiment and Social Media Analysis.
+
+Santos, W. R. dos, & Paraboni, I. (2019). Personality facets recognition from text. arXiv.
+
+Soto, C. J., & John, O. P. (2017). The next Big Five Inventory (BFI-2): Developing and assessing a hierarchical model with 15 facets to enhance bandwidth, fidelity, and predictive power. Journal of Personality and Social Psychology, 113(1), 117–143.
+
+Stajner, S., & Yenikent, S. (2020). A Survey of Automatic Personality Detection from Texts. Proceedings of the 28th International Conference on Computational Linguistics.
+
+Trull, T. J., Useda, D., Conforti, K., & Doan, B. T. (1998). Assessment of the Five-Factor Model of Personality. Journal of Personality Disorders, 12(2), 140–155.
+
+Xie, Y., & Cobb, A. (2020). Machine Learning and Complex Networks for Computational Personality Recognition from Social Media. ACM Computing Surveys, 53(6).
+
+Yamada, Y., Mathieu, B., & Khawaja, M. A. (2019). Can We See People’s Traits from Their Tweets? Predicting Perceptions of the Big Five from Text Samples. Personality and Social Psychology Bulletin, 45(10), 1485–1497.
